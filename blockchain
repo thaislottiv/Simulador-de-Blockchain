@@ -1,0 +1,105 @@
+import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+class Block {
+    private String previousHash;
+    private String data;
+    private String hash;
+    private long timeStamp;
+    private int nonce;
+
+    public Block(String data, String previousHash) {
+        this.data = data;
+        this.previousHash = previousHash;
+        this.timeStamp = new Date().getTime();
+        this.hash = calculateHash();
+    }
+
+    public String calculateHash() {
+        String input = previousHash + Long.toString(timeStamp) + Integer.toString(nonce) + data;
+        return applySha256(input);
+    }
+
+    public void mineBlock(int difficulty) {
+        String target = new String(new char[difficulty]).replace('\0', '0');
+        while (!hash.substring(0, difficulty).equals(target)) {
+            nonce++;
+            hash = calculateHash();
+        }
+        System.out.println("Bloco minerado!!! : " + hash);
+    }
+
+    public static String applySha256(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes("UTF-8"));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public String getHash() {
+        return hash;
+    }
+
+    public String getPreviousHash() {
+        return previousHash;
+    }
+}
+
+class Blockchain {
+    public static List<Block> blockchain = new ArrayList<>();
+    public static int difficulty = 4;
+
+    public static boolean isChainValid() {
+        Block currentBlock;
+        Block previousBlock;
+
+        for (int i = 1; i < blockchain.size(); i++) {
+            currentBlock = blockchain.get(i);
+            previousBlock = blockchain.get(i - 1);
+
+            // Verifica se o hash atual é válido
+            if (!currentBlock.getHash().equals(currentBlock.calculateHash())) {
+                System.out.println("Hash atual não é válido");
+                return false;
+            }
+
+            // Verifica se o hash do bloco anterior é o correto
+            if (!previousBlock.getHash().equals(currentBlock.getPreviousHash())) {
+                System.out.println("Hash anterior não corresponde");
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+public class BlockchainSimulator {
+    public static void main(String[] args) {
+        // Adicionar blocos à blockchain
+        System.out.println("Minerando bloco 1...");
+        Blockchain.blockchain.add(new Block("Bloco 1", "0"));
+        Blockchain.blockchain.get(0).mineBlock(Blockchain.difficulty);
+
+        System.out.println("Minerando bloco 2...");
+        Blockchain.blockchain.add(new Block("Bloco 2", Blockchain.blockchain.get(Blockchain.blockchain.size() - 1).getHash()));
+        Blockchain.blockchain.get(1).mineBlock(Blockchain.difficulty);
+
+        System.out.println("Minerando bloco 3...");
+        Blockchain.blockchain.add(new Block("Bloco 3", Blockchain.blockchain.get(Blockchain.blockchain.size() - 1).getHash()));
+        Blockchain.blockchain.get(2).mineBlock(Blockchain.difficulty);
+
+        // Verificar a validade da blockchain
+        System.out.println("\nBlockchain é válida: " + Blockchain.isChainValid());
+    }
+}
